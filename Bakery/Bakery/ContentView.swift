@@ -664,6 +664,7 @@ struct MainDashboardView: View {
     @State private var showingOrders = false
     
     enum Route {
+        case neworder
         case orders
         case inventory
         case salesReport
@@ -695,9 +696,23 @@ struct MainDashboardView: View {
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
-                    
-                    DashboardCard(title: "عدد سفارش جدید", value: "۲", color: .init(red: 0.6, green: 0.04, blue: 0.08))
-                    
+                    Button(action: {
+                        path.append(.neworder)
+                    }) {
+                        HStack {
+                            Spacer()
+        
+                            Text("شما 3 سفارش جدید دارید!")
+                            Spacer()
+                        }
+                        .font(.system(size: 25, weight: .medium, design: .rounded))
+                        .padding()
+                        .background(Color .init(red: 0.6, green: 0.04, blue: 0.08) )
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .shadow(color: .white, radius: 2)
+                    }
+                    .padding(.horizontal)
                     VStack(spacing: 15) {
                         // دکمه سفارشات
                         Button(action: {
@@ -766,6 +781,8 @@ struct MainDashboardView: View {
             .environment(\.layoutDirection, .rightToLeft)
             .navigationDestination(for: Route.self) { route in
                 switch route {
+                case .neworder :
+                    NewOrdersView(viewModel: viewModel)
                 case .orders:
                     BakerOrdersView(viewModel: viewModel)
                 case .inventory:
@@ -786,7 +803,7 @@ struct BakerOrdersView: View {
         [
             Order(
                 bakeryName: "نانوایی برکت",
-                customerName: "علی قربانی",
+                customerName: "سارا محمدی",
                 items: [
                     Bread(name: "بربری", count: 5),
                     Bread(name: "سنگک", count: 2)
@@ -1105,9 +1122,12 @@ struct BakerOrdersView: View {
                     Text(title)
                         .font(.subheadline)
                         .foregroundColor(.gray)
-                    Text(value)
+                    Text("2")
                         .font(.system(size: 48, weight: .bold))
                         .foregroundColor(color)
+                }
+                Button(/*@START_MENU_TOKEN@*/"Button"/*@END_MENU_TOKEN@*/) {
+                    /*@START_MENU_TOKEN@*//*@PLACEHOLDER=Action@*/ /*@END_MENU_TOKEN@*/
                 }
                 .padding(.trailing, 20)
                 
@@ -1168,6 +1188,400 @@ struct BakerOrdersView: View {
             MainDashboardView(viewModel: AppViewModel())        }
     }
 
+// MARK: - NewOrdersView (صفحه سفارشات جدید)
+
+struct NewOrdersView: View {
+    @ObservedObject var viewModel: AppViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    // MARK: - سفارشات فیک جدید (۳ عدد) با آدرس
+    @State private var newOrders: [Order] = [
+        Order(
+            bakeryName: "نانوایی برکت",
+            customerName: "سارا محمدی",
+            items: [
+                Bread(name: "بربری", count: 5),
+                Bread(name: "سنگک", count: 2)
+            ],
+            status: .pending
+        ),
+        Order(
+            bakeryName: "نانوایی برکت",
+            customerName: "حسین رضایی",
+            items: [
+                Bread(name: "تافتون", count: 3)
+            ],
+            status: .pending
+        ),
+        Order(
+            bakeryName: "نانوایی برکت",
+            customerName: "مریم حسینی",
+            items: [
+                Bread(name: "بربری", count: 2),
+                Bread(name: "تافتون", count: 2)
+            ],
+            status: .pending
+        )
+    ]
+    
+    // آدرس‌های فیک برای مشتری‌ها
+    private let customerAddresses: [String: String] = [
+        "سارا محمدی": "خیابان صدرا، نبش چهارراه، پلاک ۱۲",
+        "حسین رضایی": "خیابان جمهوری، پلاک ۳۲",
+        "مریم حسینی": "خیابان ولیعصر، پلاک ۸"
+    ]
+    
+    var body: some View {
+        ZStack {
+            backgroundView
+            mainContent
+        }
+        .environment(\.layoutDirection, .rightToLeft)
+    }
+    
+    // MARK: - پس‌زمینه
+    private var backgroundView: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.75, green: 0.65, blue: 0.5),
+                Color(red: 0.85, green: 0.75, blue: 0.6)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
+    }
+    
+    // MARK: - محتوای اصلی
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // هدر ساده (بدون هدر بزرگ)
+            simpleHeader
+            orderCountView
+            ordersList
+            closeButton
+        }
+    }
+    
+    // MARK: - هدر ساده
+    private var simpleHeader: some View {
+        HStack {
+            Spacer()
+            
+            VStack(spacing: 2) {
+                Image(systemName: "bell.badge.fill")
+                    .font(.title2)
+                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+                    .symbolRenderingMode(.multicolor)
+                
+                Text("سفارشات جدید")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+            }
+            
+            Spacer()
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+    }
+    
+    // MARK: - تعداد سفارشات
+    private var orderCountView: some View {
+        HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.subheadline)
+                    .foregroundColor(.orange)
+                
+                Text("\(newOrders.count) سفارش جدید")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.orange)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(Color.orange.opacity(0.12))
+            .cornerRadius(20)
+            
+            Spacer()
+            
+            if newOrders.isEmpty {
+                Text("همه سفارشات پذیرفته شد ✅")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(12)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - لیست سفارشات
+    private var ordersList: some View {
+        ScrollView {
+            if newOrders.isEmpty {
+                // پیام خالی بودن لیست
+                VStack(spacing: 20) {
+                    Spacer(minLength: 60)
+                    
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
+                    
+                    Text("همه سفارشات پذیرفته شدند! 🎉")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+                    
+                    Text("هیچ سفارش جدیدی وجود ندارد")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundColor(.gray)
+                    
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                LazyVStack(spacing: 16) {
+                    ForEach(newOrders.indices, id: \.self) { index in
+                        newOrderCard(for: newOrders[index], index: index)
+                    }
+                }
+                .padding(.vertical, 12)
+            }
+        }
+    }
+    
+    // MARK: - کارت سفارش جدید
+    private func newOrderCard(for order: Order, index: Int) -> some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            // هدر کارت با شماره و نشان جدید
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    
+                    Text("جدید")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.orange, Color.orange.opacity(0.7)]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    
+                    Text("همین الان")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            // خط جداکننده
+            Divider()
+                .background(Color(red: 0.8, green: 0.75, blue: 0.7).opacity(0.4))
+            
+            // اطلاعات مشتری
+            customerInfoView(order: order)
+            
+            // آدرس
+            addressView(for: order.customerName)
+            
+            // آیتم‌های سفارش
+            orderItemsView(order: order)
+            
+            // دکمه پذیرش سفارش
+            acceptButton(for: order)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 5)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.orange.opacity(0.4), Color.orange.opacity(0.1)]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 2
+                )
+        )
+        .padding(.horizontal, 20)
+    }
+    
+    // MARK: - اطلاعات مشتری
+    private func customerInfoView(order: Order) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.6, green: 0.25, blue: 0.15),
+                                Color(red: 0.8, green: 0.4, blue: 0.3)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 48, height: 48)
+                
+                Text(String(order.customerName.prefix(1)))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            .shadow(color: Color(red: 0.6, green: 0.25, blue: 0.15).opacity(0.3), radius: 5)
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(order.customerName)
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+                
+                Text(order.bakeryName)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+        }
+    }
+    
+    // MARK: - آدرس
+    private func addressView(for customerName: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "mappin.and.ellipse")
+                .font(.system(size: 14))
+                .foregroundColor(Color(red: 0.6, green: 0.25, blue: 0.15))
+            
+            Text(customerAddresses[customerName] ?? "آدرس نامشخص")
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.trailing)
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .background(Color(red: 0.98, green: 0.96, blue: 0.92))
+        .cornerRadius(8)
+    }
+    
+    // MARK: - آیتم‌های سفارش
+    private func orderItemsView(order: Order) -> some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            Text("موارد سفارش:")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(.gray)
+            
+            HStack(spacing: 8) {
+                ForEach(order.items) { bread in
+                    breadTag(bread: bread)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+    
+    // MARK: - تگ نان
+    private func breadTag(bread: Bread) -> some View {
+        HStack(spacing: 4) {
+            Text(bread.name)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(Color(red: 0.4, green: 0.2, blue: 0.1))
+            
+            Text("×\(bread.count)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(Color(red: 0.6, green: 0.25, blue: 0.15))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(Color(red: 0.98, green: 0.96, blue: 0.92))
+        .cornerRadius(10)
+    }
+    
+    // MARK: - دکمه پذیرش سفارش (با قابلیت حذف)
+    private func acceptButton(for order: Order) -> some View {
+        Button(action: {
+            // حذف سفارش از لیست
+            withAnimation(.easeInOut(duration: 0.3)) {
+                if let index = newOrders.firstIndex(where: { $0.id == order.id }) {
+                    newOrders.remove(at: index)
+                }
+            }
+            
+            // ویبره خفیف برای بازخورد
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+        }) {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.headline)
+                Text("پذیرش سفارش")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.green,
+                        Color.green.opacity(0.8)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: Color.green.opacity(0.3), radius: 5, y: 3)
+        }
+    }
+    
+    // MARK: - دکمه بستن
+    private var closeButton: some View {
+        Button(action: { dismiss() }) {
+            HStack {
+                Image(systemName: "chevron.down.circle.fill")
+                    .font(.headline)
+                Text("بستن")
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(width: 160, height: 50)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.2, green: 0.15, blue: 0.2),
+                        Color(red: 0.35, green: 0.25, blue: 0.3)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(25)
+            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+        }
+        .padding(.vertical, 20)
+    }
+}
     // MARK: - Preview
     
     #Preview {
