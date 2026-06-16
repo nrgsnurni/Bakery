@@ -193,14 +193,13 @@ struct WelcomeView: View {
                     Spacer(minLength: 200)
                 }
             }
-            .fullScreenCover(isPresented: $isLoggedIn) {
-                NavigationView {
-                    BakerView(viewModel: viewModel)
-                }
+      
+                    .fullScreenCover(isPresented: $isLoggedIn) {
+                        MainDashboardView(viewModel: viewModel)
+                    }                }
             }
         }
-    }
-}
+    
 
 // MARK: - انتخاب نقش (نانوا، مشتری، پیک)
 
@@ -310,11 +309,8 @@ struct BakerView: View {
                     
                     
                 }
-               Image ("baker")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 200, height: 200)
-                Text("داشبورد نانوا")
+            
+                Text("مدیریت مواد")
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
                    // .padding(.top, 40)
@@ -326,20 +322,29 @@ struct BakerView: View {
                             .font(.system(size: 25, weight: .medium, design: .rounded))
                             .frame(width: 100)
                         Spacer()
-                        Text("\(bread.count)")
-                            .font(.system(size: 30, weight: .bold, design: .rounded))
-                            .frame(width: 60)
-                        HStack(spacing: 20) {
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+                        Spacer()
+
                             Button(action: { viewModel.addBread(bread.name) }) {
-                                Image(systemName: "plus.circle.fill")
+                                Image("done")
+                                    .resizable()
                                     .font(.title)
                                     .foregroundColor(.green)
-                            }
-                            Button(action: { viewModel.removeBread(bread.name) }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .font(.title)
-                                    .foregroundColor(.red)
-                            }
+                                    .frame(width: 40, height: 40 )
+                            
+                    
+                            
                         }
                     }
                     .padding(.horizontal, 40)
@@ -386,47 +391,6 @@ struct BakerView: View {
     }
 }
 
-struct BakerOrdersView: View {
-    @ObservedObject var viewModel: AppViewModel
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        ZStack {
-            Color(red: 0.75, green: 0.65, blue: 0.5).ignoresSafeArea()
-            VStack {
-                Text("سفارشات")
-                    .font(.system(size: 35, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
-                    .padding()
-                
-                ScrollView {
-                    ForEach(viewModel.bakerOrders) { order in
-                        VStack(alignment: .trailing) {
-                            Text("مشتری: \(order.customerName)")
-                            Text("نانوا: \(order.bakeryName)")
-                            ForEach(order.items) { bread in
-                                Text("\(bread.name): \(bread.count) عدد")
-                            }
-                            Text("وضعیت: \(order.status.rawValue)")
-                                .foregroundColor(order.status == .delivered ? .green : .orange)
-                        }
-                        .font(.system(size: 18, design: .rounded))
-                        .padding()
-                        .background(Color(red: 0.98, green: 0.98, blue: 0.9))
-                        .cornerRadius(15)
-                        .padding(.horizontal)
-                    }
-                }
-                
-                Button("بستن") { dismiss() }
-                    .padding()
-                    .background(Color(red: 0.2, green: 0.15, blue: 0.2))
-                    .foregroundColor(.white)
-                    .cornerRadius(20)
-            }
-        }
-    }
-}
 
 // MARK: - صفحه مشتری (انتخاب نانوایی و ثبت سفارش)
 
@@ -690,58 +654,171 @@ struct SignUpView: View {
 }
     
     
-    // MARK:orderviw
+// MARK:orderviw
     
     
-    struct MainDashboardView: View {
-        var body: some View {
-            NavigationView {
-                ZStack {
-                    // رنگ پس‌زمینه
-                    Color.brown.ignoresSafeArea()
+struct MainDashboardView: View {
+//@ObservedObject var viewModel: AppViewModel
+    @State private var path = [Route]()
+    @ObservedObject var viewModel: AppViewModel
+    @State private var showingOrders = false
+    
+    enum Route {
+        case orders
+        case inventory
+        case salesReport
+    }
+    
+    var body: some View {
+        NavigationStack(path: $path) {
+            ZStack {
+                Color(red: 0.75, green: 0.65, blue: 0.5).ignoresSafeArea()
+                
+                VStack(spacing: 25) {
+                    Spacer()
+                    Spacer()
                     
-                    VStack(spacing: 25) {
-                        // هدر با نام دانشجو
-                        HStack {
-                            Spacer(minLength: 1)
-                            ZStack {
-                                Label("داشبورد نانوا " ,systemImage: "baker")
-                                    .bold()
-                                    .font(.system(size: 50, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 20)
-                        
-                        // کارت تعداد سفارش جدید
-                        DashboardCard(title: "عدد سفارش جدید", value: "۲", color: .blue)
-                        
-                        // دکمه‌های منو
-                        VStack(spacing: 15) {
-                            MenuButton(title: "سفارشات", icon: "list.bullet.clipboard", color: Color(red: 0.75, green: 0.65, blue: 0.5))
-                                .shadow(color: .white, radius: 2)
+                    Image("baker")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 150, height: 150)
+                    
+                    HStack {
+                        Spacer(minLength: 1)
+                        ZStack {
+                            Label(" نانوایی برکت ", systemImage: "baker")
+                                .bold()
                                 .font(.system(size: 50, weight: .medium, design: .rounded))
-                            MenuButton(title: "مدیریت نان", icon: "fork.knife.circle", color: Color(red: 0.75, green: 0.65, blue: 0.5))
-                                .shadow(color: .white, radius: 2)
-                            MenuButton(title: "موجودی مواد اولیه", icon: "cube.box", color: Color(red: 0.75, green: 0.65, blue: 0.5))
-                                .shadow(color: .white, radius: 2)
-                            MenuButton(title: "گزارش فروش", icon: "chart.bar.doc.fill", color: Color(red: 0.75, green: 0.65, blue: 0.5))
-                                .shadow(color: .white, radius: 2)
+                                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
                         }
-                        .padding(.horizontal)
-                        
                         Spacer()
                     }
-                    .padding(.vertical)
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                    
+                    DashboardCard(title: "عدد سفارش جدید", value: "۲", color: .init(red: 0.6, green: 0.04, blue: 0.08))
+                    
+                    VStack(spacing: 15) {
+                        // دکمه سفارشات
+                        Button(action: {
+                            path.append(.orders)
+                        }) {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "list.bullet.clipboard.fill")
+                                Text("سفارشات")
+                                Spacer()
+                            }
+                            .font(.system(size: 25, weight: .medium, design: .rounded))
+                            .padding()
+                            .background(Color .brown)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(color: .white, radius: 2)
+                        }
+                        
+                        // دکمه مدیریت مواد
+                        Button(action: {
+                            path.append(.inventory)
+                        }) {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "fork.knife.circle.fill")
+                                Text("مدیریت مواد")
+                                Spacer()
+                            }
+                            .font(.system(size: 25, weight: .medium, design: .rounded))
+                            .padding()
+                            .background(Color .brown)                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(color: .white, radius: 2)
+                        }
+                        
+                        // دکمه گزارش فروش
+                        Button(action: {
+                            path.append(.salesReport)
+                        }) {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "dollarsign.circle.fill")
+                                Text("گزارش فروش")
+                                Spacer()
+                            }
+                            .font(.system(size: 25, weight: .medium, design: .rounded))
+                            .padding()
+                            .background(Color .brown)                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(color: .white, radius: 2)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
                 }
-                .navigationBarHidden(true)
-                .environment(\.layoutDirection, .rightToLeft) // برای پشتیبانی از زبان فارسی
+                .padding(.vertical)
+            }
+            .navigationBarHidden(true)
+            .environment(\.layoutDirection, .rightToLeft)
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .orders:
+                    BakerOrdersView(viewModel: viewModel)
+                case .inventory:
+                    BakerView(viewModel: viewModel)
+               case .salesReport:
+                    BakerView(viewModel: viewModel)
+                }
             }
         }
     }
+}
+struct BakerOrdersView: View {
+    @ObservedObject var viewModel: AppViewModel
+    @Environment(\.dismiss) var dismiss
     
+    var body: some View {
+        ZStack {
+            Color(red: 0.75, green: 0.65, blue: 0.5).ignoresSafeArea()
+            VStack {
+                Text("سفارشات")
+                    .font(.system(size: 35, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+                    .padding()
+                
+                ScrollView {
+                    ForEach(viewModel.bakerOrders) { order in
+                        VStack(alignment: .trailing) {
+                            Text("مشتری: \(order.customerName)")
+                            Text("نانوا: \(order.bakeryName)")
+                            ForEach(order.items) { bread in
+                                Text("\(bread.name): \(bread.count) عدد")
+                            }
+                            Text("وضعیت: \(order.status.rawValue)")
+                                .foregroundColor(order.status == .delivered ? .green : .orange)
+                        }
+                        .font(.system(size: 18, design: .rounded))
+                        .padding()
+                        .background(Color(red: 0.98, green: 0.98, blue: 0.9))
+                        .cornerRadius(15)
+                        .padding(.horizontal)
+                    }
+                }
+                
+                Button("بستن") { dismiss() }
+                    .padding()
+                    .background(Color(red: 0.2, green: 0.15, blue: 0.2))
+                    .foregroundColor(.white)
+                    .cornerRadius(20)
+            }
+        }
+    }
+}
+
     // کارت نمایش اعداد و آمار
     struct DashboardCard: View {
         let title: String
@@ -814,9 +891,9 @@ struct SignUpView: View {
     // پیش‌نمایش
     struct MainDashboardView_Previews: PreviewProvider {
         static var previews: some View {
-            MainDashboardView()
-        }
+            MainDashboardView(viewModel: AppViewModel())        }
     }
+
     // MARK: - Preview
     
     #Preview {

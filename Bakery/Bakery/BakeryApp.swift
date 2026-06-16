@@ -1,11 +1,5 @@
-//
-//  BakeryApp.swift
-//  Bakery
-//
-//  Created by Narges nurani on 2026.06.15.
-//
-
 import SwiftUI
+import SwiftData
 
 @main
 struct BakeryApp: App {
@@ -13,5 +7,4 @@ struct BakeryApp: App {
         WindowGroup {
             WelcomeView()
         }
-    }
-}
+    }}
