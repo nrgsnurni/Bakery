@@ -668,6 +668,7 @@ struct MainDashboardView: View {
         case orders
         case inventory
         case salesReport
+        case modirat
     }
     
     var body: some View {
@@ -702,7 +703,7 @@ struct MainDashboardView: View {
                         HStack {
                             Spacer()
         
-                            Text("شما 3 سفارش جدید دارید!")
+                            Text("سفارش جدید دارید !")
                             Spacer()
                         }
                         .font(.system(size: 25, weight: .medium, design: .rounded))
@@ -734,7 +735,7 @@ struct MainDashboardView: View {
                         
                         // دکمه مدیریت مواد
                         Button(action: {
-                            path.append(.inventory)
+                            path.append(.modirat)
                         }) {
                             HStack {
                                 Spacer()
@@ -789,6 +790,8 @@ struct MainDashboardView: View {
                     BakerView(viewModel: viewModel)
                case .salesReport:
                     BakerView(viewModel: viewModel)
+                case .modirat:
+                       InventoryManagementView()
                 }
             }
         }
@@ -1581,6 +1584,636 @@ struct NewOrdersView: View {
         }
         .padding(.vertical, 20)
     }
+}
+
+
+//
+//  InventoryManagementView.swift
+//  Bakery
+//
+//  Created by Narges nurani on 2026.03.21.
+//
+
+import SwiftUI
+import SwiftData
+
+// MARK: - مدل داده SwiftData
+
+@Model
+class Ingredient {
+    var name: String
+    var quantity: Double
+    var unit: String
+    var minimumQuantity: Double
+    var createdAt: Date
+    
+    init(name: String, quantity: Double, unit: String, minimumQuantity: Double = 5) {
+        self.name = name
+        self.quantity = quantity
+        self.unit = unit
+        self.minimumQuantity = minimumQuantity
+        self.createdAt = Date()
+    }
+}
+
+// MARK: - ViewModel
+
+@MainActor
+class InventoryViewModel: ObservableObject {
+    @Published var ingredients: [Ingredient] = []
+    @Published var searchText = ""
+    @Published var showingAddSheet = false
+    @Published var selectedIngredient: Ingredient?
+    
+    private var modelContext: ModelContext?
+    
+    func setup(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        fetchIngredients()
+    }
+    
+    func fetchIngredients() {
+        guard let modelContext = modelContext else { return }
+        
+        let descriptor = FetchDescriptor<Ingredient>(
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        
+        do {
+            ingredients = try modelContext.fetch(descriptor)
+        } catch {
+            print("خطا در دریافت مواد: \(error)")
+        }
+    }
+    
+    func addIngredient(name: String, quantity: Double, unit: String, minimumQuantity: Double) {
+        guard let modelContext = modelContext else { return }
+        
+        let newIngredient = Ingredient(
+            name: name,
+            quantity: quantity,
+            unit: unit,
+            minimumQuantity: minimumQuantity
+        )
+        
+        modelContext.insert(newIngredient)
+        saveContext()
+        fetchIngredients()
+    }
+    
+    func updateIngredient(_ ingredient: Ingredient, quantity: Double) {
+        ingredient.quantity = quantity
+        saveContext()
+        fetchIngredients()
+    }
+    
+    func deleteIngredient(_ ingredient: Ingredient) {
+        guard let modelContext = modelContext else { return }
+        modelContext.delete(ingredient)
+        saveContext()
+        fetchIngredients()
+    }
+    
+    func deleteAllIngredients() {
+        guard let modelContext = modelContext else { return }
+        for ingredient in ingredients {
+            modelContext.delete(ingredient)
+        }
+        saveContext()
+        fetchIngredients()
+    }
+    
+    private func saveContext() {
+        guard let modelContext = modelContext else { return }
+        do {
+            try modelContext.save()
+        } catch {
+            print("خطا در ذخیره‌سازی: \(error)")
+        }
+    }
+    
+    // مواد با موجودی کم
+    var lowStockIngredients: [Ingredient] {
+        ingredients.filter { $0.quantity <= $0.minimumQuantity }
+    }
+}
+
+// MARK: - صفحه اصلی مدیریت مواد
+
+struct InventoryManagementView: View {
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var viewModel = InventoryViewModel()
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        ZStack {
+            backgroundView
+            mainContent
+        }
+        .environment(\.layoutDirection, .rightToLeft)
+        .onAppear {
+            viewModel.setup(modelContext: modelContext)
+        }
+        .sheet(isPresented: $viewModel.showingAddSheet) {
+            AddIngredientSheet(viewModel: viewModel)
+        }
+    }
+    
+    // MARK: - پس‌زمینه
+    private var backgroundView: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.75, green: 0.65, blue: 0.5),
+                Color(red: 0.85, green: 0.75, blue: 0.6)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
+    }
+    
+    // MARK: - محتوای اصلی
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            headerView
+            searchBar
+            statsView
+            ingredientsList
+            addButton
+        }
+    }
+    
+    // MARK: - هدر
+    private var headerView: some View {
+        ZStack {
+      
+            HStack {
+                             if !viewModel.ingredients.isEmpty {
+                    Button(action: {
+                        viewModel.deleteAllIngredients()
+                    }) {
+                        Image(systemName: "trash.circle.fill")
+                            .font(.title)
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .padding(.trailing, 16)
+                } else {
+                    Color.clear
+                        .frame(width: 40)
+                }
+            }
+            .padding(.top, 20)
+        }
+    }
+    
+    // MARK: - جستجو
+    private var searchBar: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+                .padding(.leading, 8)
+            
+            TextField("جستجوی مواد...", text: $viewModel.searchText)
+                .font(.system(size: 16, design: .rounded))
+                .padding(.vertical, 10)
+                .autocapitalization(.none)
+            
+            if !viewModel.searchText.isEmpty {
+                Button(action: { viewModel.searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+                .padding(.trailing, 8)
+            }
+        }
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 5)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - آمار
+    private var statsView: some View {
+        HStack(spacing: 12) {
+            // تعداد کل مواد
+            StatBox(
+                icon: "cube.box.fill",
+                title: "کل مواد",
+                value: "\(viewModel.ingredients.count)",
+                color: .blue
+            )
+            
+            // مواد با موجودی کم
+            StatBox(
+                icon: "exclamationmark.triangle.fill",
+                title: "موجودی کم",
+                value: "\(viewModel.lowStockIngredients.count)",
+                color: viewModel.lowStockIngredients.isEmpty ? .green : .orange
+            )
+            
+            // تنوع مواد
+            let units = Set(viewModel.ingredients.map { $0.unit })
+            StatBox(
+                icon: "list.bullet.rectangle.portrait.fill",
+                title: "واحدها",
+                value: "\(units.count)",
+                color: .purple
+            )
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+    
+    // MARK: - لیست مواد
+    private var ingredientsList: some View {
+        ScrollView {
+            if viewModel.ingredients.isEmpty {
+                emptyStateView
+            } else {
+                LazyVStack(spacing: 12) {
+                    let filtered = viewModel.searchText.isEmpty ?
+                        viewModel.ingredients :
+                        viewModel.ingredients.filter { $0.name.contains(viewModel.searchText) }
+                    
+                    if filtered.isEmpty {
+                        emptySearchView
+                    } else {
+                        ForEach(filtered) { ingredient in
+                            IngredientCard(
+                                ingredient: ingredient,
+                                onUpdate: { newQuantity in
+                                    viewModel.updateIngredient(ingredient, quantity: newQuantity)
+                                },
+                                onDelete: {
+                                    viewModel.deleteIngredient(ingredient)
+                                }
+                            )
+                        }
+                    }
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+    
+    // MARK: - حالت خالی
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Spacer(minLength: 60)
+            
+            Image(systemName: "fork.knife.circle")
+                .font(.system(size: 60))
+                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2).opacity(0.3))
+            
+            Text("هیچ ماده‌ای ثبت نشده")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+            
+            Text("برای شروع، دکمه + را بزنید")
+                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .foregroundColor(.gray)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+    
+    // MARK: - حالت جستجوی خالی
+    private var emptySearchView: some View {
+        VStack(spacing: 16) {
+            Spacer(minLength: 40)
+            
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundColor(.gray.opacity(0.4))
+            
+            Text("نتیجه‌ای پیدا نشد")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .foregroundColor(.gray)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+    
+    // MARK: - دکمه افزودن
+    private var addButton: some View {
+        Button(action: {
+            viewModel.showingAddSheet = true
+        }) {
+            HStack {
+                Image(systemName: "plus.circle.fill")
+                    .font(.headline)
+                Text("افزودن ماده جدید")
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.2, green: 0.15, blue: 0.2),
+                        Color(red: 0.35, green: 0.25, blue: 0.3)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - StatBox (کمپوننت آمار)
+
+struct StatBox: View {
+    let icon: String
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+                
+                Text(title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.04), radius: 4)
+    }
+}
+
+// MARK: - IngredientCard (کمپوننت کارت ماده)
+
+struct IngredientCard: View {
+    let ingredient: Ingredient
+    let onUpdate: (Double) -> Void
+    let onDelete: () -> Void
+    
+    @State private var quantity: Double
+    @State private var showingDeleteAlert = false
+    
+    init(ingredient: Ingredient, onUpdate: @escaping (Double) -> Void, onDelete: @escaping () -> Void) {
+        self.ingredient = ingredient
+        self.onUpdate = onUpdate
+        self.onDelete = onDelete
+        self._quantity = State(initialValue: ingredient.quantity)
+    }
+    
+    var isLowStock: Bool {
+        ingredient.quantity <= ingredient.minimumQuantity
+    }
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 10) {
+            HStack {
+                // نشان موجودی کم
+                if isLowStock {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                        
+                        Text("موجودی کم")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.orange)
+                    .cornerRadius(12)
+                }
+                
+                Spacer()
+                
+                // دکمه حذف
+                Button(action: {
+                    showingDeleteAlert = true
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.red.opacity(0.6))
+                }
+                .alert("حذف ماده", isPresented: $showingDeleteAlert) {
+                    Button("لغو", role: .cancel) { }
+                    Button("حذف", role: .destructive) {
+                        onDelete()
+                    }
+                } message: {
+                    Text("آیا از حذف '\(ingredient.name)' مطمئن هستید؟")
+                }
+            }
+            
+            // نام ماده
+            Text(ingredient.name)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.2))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            
+            // واحد
+            Text("واحد: \(ingredient.unit)")
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(.gray)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            
+            // مقدار
+            HStack {
+                Spacer()
+                
+                // دکمه کاهش
+                Button(action: {
+                    if quantity > 0 {
+                        quantity -= 1
+                        onUpdate(quantity)
+                    }
+                }) {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.red.opacity(0.6))
+                }
+                
+                Text("\(Int(quantity))")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(isLowStock ? .orange : Color(red: 0.2, green: 0.15, blue: 0.2))
+                    .frame(width: 60)
+                
+                // دکمه افزایش
+                Button(action: {
+                    quantity += 1
+                    onUpdate(quantity)
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.green.opacity(0.6))
+                }
+                
+                // دکمه افزایش ۵ واحدی
+                Button(action: {
+                    quantity += 5
+                    onUpdate(quantity)
+                }) {
+                    Text("+۵")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.7))
+                        .cornerRadius(8)
+                }
+            }
+            
+            // حداقل موجودی
+            Text("حداقل موجودی: \(Int(ingredient.minimumQuantity)) \(ingredient.unit)")
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundColor(.gray)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    isLowStock ? Color.orange.opacity(0.3) : Color.clear,
+                    lineWidth: 1.5
+                )
+        )
+    }
+}
+
+// MARK: - AddIngredientSheet (صفحه افزودن ماده)
+
+struct AddIngredientSheet: View {
+    @ObservedObject var viewModel: InventoryViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var name = ""
+    @State private var quantity = ""
+    @State private var unit = ""
+    @State private var minimumQuantity = ""
+    
+    let units = ["کیلوگرم", "گرم", "لیتر", "میلی‌لیتر", "عدد", "بسته", "کیسه"]
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(red: 0.98, green: 0.96, blue: 0.92)
+                    .ignoresSafeArea()
+                
+                Form {
+                    Section(header: Text("اطلاعات ماده")) {
+                        TextField("نام ماده", text: $name)
+                            .font(.system(size: 16, design: .rounded))
+                        
+                        Picker("واحد", selection: $unit) {
+                            ForEach(units, id: \.self) { unit in
+                                Text(unit).tag(unit)
+                            }
+                        }
+                    }
+                    
+                    Section(header: Text("مقدار")) {
+                        TextField("مقدار", text: $quantity)
+                            .font(.system(size: 16, design: .rounded))
+                            .keyboardType(.decimalPad)
+                        
+                        TextField("حداقل موجودی", text: $minimumQuantity)
+                            .font(.system(size: 16, design: .rounded))
+                            .keyboardType(.decimalPad)
+                    }
+                    
+                    Section {
+                        Button(action: addIngredient) {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("افزودن ماده")
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                Spacer()
+                            }
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(
+                                isFormValid ? Color(red: 0.2, green: 0.15, blue: 0.2) : Color.gray
+                            )
+                            .cornerRadius(12)
+                        }
+                        .disabled(!isFormValid)
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("افزودن ماده جدید")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("لغو") {
+                        dismiss()
+                    }
+                }
+            }
+            .environment(\.layoutDirection, .rightToLeft)
+        }
+    }
+    
+    var isFormValid: Bool {
+        !name.isEmpty &&
+        !unit.isEmpty &&
+        Double(quantity) != nil &&
+        Double(minimumQuantity) != nil
+    }
+    
+    func addIngredient() {
+        guard let quantity = Double(quantity),
+              let minQuantity = Double(minimumQuantity) else { return }
+        
+        viewModel.addIngredient(
+            name: name,
+            quantity: quantity,
+            unit: unit,
+            minimumQuantity: minQuantity
+        )
+        
+        dismiss()
+    }
+}
+
+// MARK: - Preview
+
+#Preview {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Ingredient.self, configurations: config)
+    
+    return InventoryManagementView()
+        .modelContainer(container)
 }
     // MARK: - Preview
     

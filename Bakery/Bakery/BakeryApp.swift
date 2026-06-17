@@ -7,4 +7,6 @@ struct BakeryApp: App {
         WindowGroup {
             WelcomeView()
         }
-    }}
+        .modelContainer(for: [Ingredient.self]) 
+    }
+}
